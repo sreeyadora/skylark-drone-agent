@@ -9,7 +9,7 @@ This system simulates a real-world drone fleet command center used in industries
 ## 🌐 Live Application
 
 **Streamlit Deployment:**
-https://skylark-drone-agent-9hiavt7jjeyhzlcs82nti4.streamlit.app/
+https://skylark-drone-agent-9hiavt7ijeyhzlcs82nti4.streamlit.app/
 
 ---
 
