@@ -113,7 +113,25 @@ elif page == "AI Assistant":
 
         response = ai.process(query)
 
-        st.session_state.chat.append(("ai", str(response)))
-
+        st.session_state.chat.append(("ai", response))
+        
     for role, message in st.session_state.chat:
-        chat_message(role, message)
+
+    if role == "user":
+
+        chat_message("user", message)
+
+    else:
+
+        if message["type"] == "message":
+
+            chat_message("ai", message["data"])
+
+        elif message["type"] == "table":
+
+            st.dataframe(
+                message["data"],
+                use_container_width=True
+            )
+
+    
