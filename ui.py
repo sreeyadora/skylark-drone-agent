@@ -3,34 +3,34 @@ import streamlit as st
 
 def metric_card(title, value):
 
-    st.markdown(f"""
-    <div style="
-        background-color:#111;
-        padding:20px;
-        border-radius:12px;
-        text-align:center;
-    ">
-        <h3>{title}</h3>
-        <h1 style="color:#00ffaa">{value}</h1>
-    </div>
-    """, unsafe_allow_html=True)
-
+    st.markdown(
+        f"""
+        <div style="
+            background-color:#111;
+            padding:20px;
+            border-radius:10px;
+            text-align:center;
+            border:1px solid #333;
+        ">
+            <h4>{title}</h4>
+            <h2>{value}</h2>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 def chat_message(role, message):
 
     if role == "user":
-
-        st.markdown(f"""
-        <div style="background:#222;padding:10px;border-radius:10px;margin:5px">
-        👤 {message}
-        </div>
-        """, unsafe_allow_html=True)
+        with st.chat_message("user"):
+            st.write(message)
 
     else:
+        with st.chat_message("assistant"):
 
-        st.markdown(f"""
-        <div style="background:#111;padding:10px;border-radius:10px;margin:5px">
-        🤖 {message}
-        </div>
-        """, unsafe_allow_html=True)
+            if hasattr(message, "to_dict"):
+                st.dataframe(message)
+
+            else:
+                st.write(message)

@@ -10,7 +10,6 @@ st.set_page_config(
     layout="wide"
 )
 
-
 ai = DroneCoordinatorAI()
 
 pilots, drones, missions = load_data()
@@ -20,9 +19,7 @@ pilots, drones, missions = load_data()
 st.sidebar.title("Drone Coordinator")
 
 page = st.sidebar.radio(
-
     "Navigation",
-
     [
         "Dashboard",
         "Pilots",
@@ -59,7 +56,6 @@ if page == "Dashboard":
         metric_card("Missions", len(missions))
 
 
-
 # PILOTS PAGE
 elif page == "Pilots":
 
@@ -73,14 +69,12 @@ elif page == "Pilots":
     st.dataframe(pilots, use_container_width=True)
 
 
-
 # DRONES PAGE
 elif page == "Drones":
 
     st.title("🚁 Drones")
 
     st.dataframe(drones, use_container_width=True)
-
 
 
 # MISSIONS PAGE
@@ -91,19 +85,15 @@ elif page == "Missions":
     st.dataframe(missions, use_container_width=True)
 
 
-
 # AI CHAT PAGE
 elif page == "AI Assistant":
 
     st.title("🤖 AI Command Center")
 
-
     if "chat" not in st.session_state:
         st.session_state.chat = []
 
-
     query = st.chat_input("Enter command")
-
 
     if query:
 
@@ -111,8 +101,7 @@ elif page == "AI Assistant":
 
         response = ai.process(query)
 
-        st.session_state.chat.append(("ai", str(response)))
-
+        st.session_state.chat.append(("ai", response))
 
     for role, message in st.session_state.chat:
         chat_message(role, message)
