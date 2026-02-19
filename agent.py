@@ -1,114 +1,229 @@
-from sheets import load_data, update_pilot_status, update_drone_status
+import pandas as pd
+from sheets import (
+    load_data,
+    update_pilot_status,
+    update_drone_status
+)
 
 
 class DroneCoordinatorAI:
 
     def __init__(self):
-
-        self.refresh()
-
-
-    def refresh(self):
-
-        self.pilots, self.drones, self.missions = load_data()
+        self.reload()
 
 
-    def process(self, command):
+    # -----------------------------
+    # Reload latest data
+    # -----------------------------
+    def reload(self):
 
-        cmd = command.lower().strip()
+        pilots, drones, missions = load_data()
+
+        self.pilots = pilots
+        self.drones = drones
+        self.missions = missions
 
 
+    # -----------------------------
+    # Main command processor
+    # -----------------------------
+    def process(self, query):
+
+        if not query:
+            return self.msg("Empty command")
+
+        query = query.lower().strip()
+
+        self.reload()
+
+
+        # -------------------------
         # SHOW PILOTS
-        if "show pilots" in cmd:
+        # -------------------------
 
-            return {
-                "type": "table",
-                "data": self.pilots
-            }
+        if "show pilots" in query:
+
+            return self.table(self.pilots)
 
 
+        # -------------------------
         # SHOW DRONES
-        elif "show drones" in cmd:
+        # -------------------------
 
-            return {
-                "type": "table",
-                "data": self.drones
-            }
+        if "show drones" in query:
+
+            return self.table(self.drones)
 
 
+        # -------------------------
         # SHOW MISSIONS
-        elif "show missions" in cmd:
+        # -------------------------
 
-            return {
-                "type": "table",
-                "data": self.missions
-            }
+        if "show missions" in query:
+
+            return self.table(self.missions)
 
 
+        # -------------------------
         # MARK PILOT UNAVAILABLE
-        elif "mark pilot" in cmd and "unavailable" in cmd:
+        # -------------------------
 
-            name = command.split("pilot")[1].split("unavailable")[0].strip()
+        if "unavailable" in query and "pilot" in query or "mark" in query and "unavailable" in query:
 
-            success = update_pilot_status(name, "Unavailable")
+            name = self.extract_name(query)
 
-            self.refresh()
+            if name:
 
-            if success:
-                return {
-                    "type": "message",
-                    "data": f"Pilot {name} marked unavailable"
-                }
-            else:
-                return {
-                    "type": "message",
-                    "data": "Pilot not found"
-                }
+                update_pilot_status(
+                    name,
+                    "Unavailable"
+                )
+
+                return self.msg(
+                    f"Pilot '{name}' marked as Unavailable"
+                )
+
+            return self.msg("Pilot not found")
 
 
+        # -------------------------
+        # MARK PILOT AVAILABLE
+        # -------------------------
+
+        if "available" in query and "pilot" in query or "mark" in query and "available" in query:
+
+            name = self.extract_name(query)
+
+            if name:
+
+                update_pilot_status(
+                    name,
+                    "Available"
+                )
+
+                return self.msg(
+                    f"Pilot '{name}' marked as Available"
+                )
+
+            return self.msg("Pilot not found")
+
+
+        # -------------------------
         # RECOMMEND PILOT
-        elif "recommend pilot" in cmd:
+        # -------------------------
+
+        if "recommend pilot" in query:
 
             available = self.pilots[
-                self.pilots["status"] == "Available"
+                self.pilots["status"].str.lower() == "available"
             ]
 
-            if len(available) == 0:
+            if available.empty:
 
-                return {
-                    "type": "message",
-                    "data": "No pilot available"
-                }
+                return self.msg("No pilots available")
 
-            return {
-                "type": "table",
-                "data": available.head(3)
-            }
+            best = available.iloc[0]
+
+            return self.msg(
+                f"Recommended Pilot: {best['name']}"
+            )
 
 
+        # -------------------------
         # RECOMMEND DRONE
-        elif "recommend drone" in cmd:
+        # -------------------------
+
+        if "recommend drone" in query:
 
             available = self.drones[
-                self.drones["status"] == "Available"
+                self.drones["status"].str.lower() == "available"
             ]
 
-            if len(available) == 0:
+            if available.empty:
 
-                return {
-                    "type": "message",
-                    "data": "No drone available"
-                }
+                return self.msg("No drones available")
 
-            return {
-                "type": "table",
-                "data": available.head(3)
-            }
+            best = available.iloc[0]
+
+            return self.msg(
+                f"Recommended Drone: {best['model']}"
+            )
 
 
-        else:
+        # -------------------------
+        # ASSIGN MISSION ENGINE
+        # -------------------------
 
-            return {
-                "type": "message",
-                "data": "Command not recognized"
-            }
+        if "assign mission" in query:
+
+            return self.assign_mission()
+
+
+        # -------------------------
+        # UNKNOWN COMMAND
+        # -------------------------
+
+        return self.msg("Command not recognized")
+
+
+    # -----------------------------
+    # Extract pilot name
+    # -----------------------------
+
+    def extract_name(self, query):
+
+        for name in self.pilots["name"]:
+
+            if name.lower() in query:
+
+                return name
+
+        return None
+
+
+    # -----------------------------
+    # Mission assignment engine
+    # -----------------------------
+
+    def assign_mission(self):
+
+        available_pilots = self.pilots[
+            self.pilots["status"].str.lower() == "available"
+        ]
+
+        available_drones = self.drones[
+            self.drones["status"].str.lower() == "available"
+        ]
+
+        if available_pilots.empty:
+            return self.msg("No pilots available")
+
+        if available_drones.empty:
+            return self.msg("No drones available")
+
+        pilot = available_pilots.iloc[0]
+        drone = available_drones.iloc[0]
+
+        return self.msg(
+            f"Mission assigned to Pilot '{pilot['name']}' using Drone '{drone['model']}'"
+        )
+
+
+    # -----------------------------
+    # Response helpers
+    # -----------------------------
+
+    def msg(self, text):
+
+        return {
+            "type": "message",
+            "data": text
+        }
+
+
+    def table(self, dataframe):
+
+        return {
+            "type": "table",
+            "data": dataframe
+        }
