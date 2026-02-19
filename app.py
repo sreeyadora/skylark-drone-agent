@@ -1,120 +1,118 @@
 import streamlit as st
 import pandas as pd
-from agent import process_query
 from sheets import load_data
+from agent import DroneCoordinatorAI
+from ui import metric_card, chat_message
+
 
 st.set_page_config(
-    page_title="Drone Operations Coordinator AI Agent",
+    page_title="Drone Coordinator Enterprise",
     layout="wide"
 )
 
-st.title("🚁 Drone Operations Coordinator AI Agent")
 
+ai = DroneCoordinatorAI()
 
-# LOAD DATA
 pilots, drones, missions = load_data()
 
 
+# SIDEBAR
+st.sidebar.title("Drone Coordinator")
+
+page = st.sidebar.radio(
+
+    "Navigation",
+
+    [
+        "Dashboard",
+        "Pilots",
+        "Drones",
+        "Missions",
+        "AI Assistant"
+    ]
+)
+
+
 # DASHBOARD
-st.subheader("📊 Dashboard")
+if page == "Dashboard":
 
-col1, col2, col3, col4 = st.columns(4)
+    st.title("📊 Enterprise Dashboard")
 
-col1.metric("Total Pilots", len(pilots))
+    col1, col2, col3, col4 = st.columns(4)
 
-col2.metric(
-    "Available Pilots",
-    len(pilots[pilots["status"] == "Available"])
-)
+    with col1:
+        metric_card("Pilots", len(pilots))
 
-col3.metric(
-    "Available Drones",
-    len(drones[drones["status"] == "Available"])
-)
+    with col2:
+        metric_card(
+            "Available Pilots",
+            len(pilots[pilots["status"] == "Available"])
+        )
 
-col4.metric("Total Missions", len(missions))
+    with col3:
+        metric_card(
+            "Available Drones",
+            len(drones[drones["status"] == "Available"])
+        )
 
-
-# TABS
-tab1, tab2, tab3, tab4 = st.tabs([
-    "Pilots",
-    "Drones",
-    "Missions",
-    "Search & Filter"
-])
+    with col4:
+        metric_card("Missions", len(missions))
 
 
-with tab1:
+
+# PILOTS PAGE
+elif page == "Pilots":
+
+    st.title("👨‍✈️ Pilots")
+
+    search = st.text_input("Search pilot")
+
+    if search:
+        pilots = pilots[pilots["name"].str.contains(search, case=False)]
+
     st.dataframe(pilots, use_container_width=True)
 
 
-with tab2:
+
+# DRONES PAGE
+elif page == "Drones":
+
+    st.title("🚁 Drones")
+
     st.dataframe(drones, use_container_width=True)
 
 
-with tab3:
+
+# MISSIONS PAGE
+elif page == "Missions":
+
+    st.title("📦 Missions")
+
     st.dataframe(missions, use_container_width=True)
 
 
-with tab4:
 
-    st.subheader("Search Pilot")
+# AI CHAT PAGE
+elif page == "AI Assistant":
 
-    search = st.text_input("Enter pilot name")
-
-    if search:
-        result = pilots[
-            pilots["name"].str.contains(search, case=False)
-        ]
-
-        st.dataframe(result)
+    st.title("🤖 AI Command Center")
 
 
-    st.subheader("Filter by Location")
-
-    location = st.selectbox(
-        "Location",
-        pilots["location"].unique()
-    )
-
-    filtered = pilots[pilots["location"] == location]
-
-    st.dataframe(filtered)
+    if "chat" not in st.session_state:
+        st.session_state.chat = []
 
 
-
-# COMMAND AGENT
-st.subheader("🤖 AI Command Center")
-
-st.info("""
-Try commands:
-
-show pilots  
-show drones  
-show missions  
-assign mission  
-recommend pilot  
-recommend drone  
-mark pilot Arjun unavailable  
-mark pilot Arjun available  
-""")
+    query = st.chat_input("Enter command")
 
 
-query = st.text_input("Enter command")
+    if query:
+
+        st.session_state.chat.append(("user", query))
+
+        response = ai.process(query)
+
+        st.session_state.chat.append(("ai", str(response)))
 
 
-if st.button("Execute Command"):
-
-    result = process_query(query)
-
-    if isinstance(result, pd.DataFrame):
-        st.dataframe(result)
-
-    else:
-        st.success(result)
-
-
-
-# REFRESH BUTTON
-if st.button("Refresh Data"):
-    st.rerun()
+    for role, message in st.session_state.chat:
+        chat_message(role, message)
