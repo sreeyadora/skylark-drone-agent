@@ -4,33 +4,35 @@ import plotly.express as px
 
 def show_analytics(pilots, drones, missions):
 
-    st.subheader("Pilot Availability")
+    st.title("📊 Analytics Dashboard")
 
-    fig = px.pie(
-        pilots,
-        names="status",
-        title="Pilot Status"
-    )
+    col1, col2 = st.columns(2)
 
-    st.plotly_chart(fig, use_container_width=True)
+    with col1:
 
-    st.subheader("Drone Availability")
+        fig = px.pie(
+            pilots,
+            names="status",
+            title="Pilot Availability"
+        )
 
-    fig2 = px.pie(
-        drones,
-        names="status",
-        title="Drone Status"
-    )
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.plotly_chart(fig2, use_container_width=True)
+    with col2:
 
-    st.subheader("Mission Priority")
+        fig2 = px.pie(
+            drones,
+            names="status",
+            title="Drone Availability"
+        )
+
+        st.plotly_chart(fig2, use_container_width=True)
 
     fig3 = px.bar(
         missions,
-        x="project_id",
+        x="client",
         y="mission_budget_inr",
-        color="priority"
+        title="Mission Revenue"
     )
 
     st.plotly_chart(fig3, use_container_width=True)
