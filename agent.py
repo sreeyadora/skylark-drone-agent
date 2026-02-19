@@ -1,128 +1,107 @@
-import pandas as pd
 from sheets import load_data, update_pilot_status, update_drone_status
-
-# Load latest data
-def get_data():
-    pilots, drones, missions = load_data()
-    return pilots, drones, missions
+import pandas as pd
 
 
-# Show functions
-def show_pilots():
-    pilots, _, _ = get_data()
-    return pilots
+class DroneCoordinatorAI:
 
+    def __init__(self):
+        self.refresh()
 
-def show_drones():
-    _, drones, _ = get_data()
-    return drones
+    def refresh(self):
+        self.pilots, self.drones, self.missions = load_data()
 
+    # SMART PILOT MATCH
+    def recommend_pilot(self, required_skill=None, location=None):
 
-def show_missions():
-    _, _, missions = get_data()
-    return missions
+        pilots = self.pilots[self.pilots["status"] == "Available"]
 
+        if required_skill:
+            pilots = pilots[pilots["skills"].str.contains(required_skill, case=False)]
 
-# Recommend pilot based on skills & availability
-def recommend_pilot():
-    pilots, _, missions = get_data()
+        if location:
+            pilots = pilots[pilots["location"] == location]
 
-    available = pilots[pilots["status"] == "Available"]
+        if pilots.empty:
+            return None
 
-    if available.empty:
-        return "No pilots available"
+        return pilots.iloc[0]
 
-    best = available.iloc[0]
+    # SMART DRONE MATCH
+    def recommend_drone(self, required_capability=None, location=None):
 
-    return f"""
-Recommended Pilot:
+        drones = self.drones[self.drones["status"] == "Available"]
 
-Name: {best['name']}
-Location: {best['location']}
-Skills: {best['skills']}
-Status: {best['status']}
-"""
+        if required_capability:
+            drones = drones[drones["capabilities"].str.contains(required_capability, case=False)]
 
+        if location:
+            drones = drones[drones["location"] == location]
 
-# Recommend drone based on availability
-def recommend_drone():
-    _, drones, _ = get_data()
+        if drones.empty:
+            return None
 
-    available = drones[drones["status"] == "Available"]
+        return drones.iloc[0]
 
-    if available.empty:
-        return "No drones available"
+    # ASSIGN MISSION
+    def assign_mission(self, mission_id):
 
-    best = available.iloc[0]
+        mission = self.missions[self.missions["project_id"] == mission_id]
 
-    return f"""
-Recommended Drone:
+        if mission.empty:
+            return "Mission not found"
 
-ID: {best['drone_id']}
-Model: {best['model']}
-Location: {best['location']}
-Status: {best['status']}
-"""
+        mission = mission.iloc[0]
 
+        pilot = self.recommend_pilot(
+            mission["required_skills"],
+            mission["location"]
+        )
 
-# Assign mission recommendation
-def assign_mission():
-    pilots, drones, missions = get_data()
+        drone = self.recommend_drone(
+            mission["required_skills"],
+            mission["location"]
+        )
 
-    available_pilot = pilots[pilots["status"] == "Available"]
-    available_drone = drones[drones["status"] == "Available"]
+        if pilot is None or drone is None:
+            return "No suitable pilot or drone available"
 
-    if available_pilot.empty or available_drone.empty:
-        return "No available pilot or drone"
+        update_pilot_status(pilot["name"], "Assigned")
+        update_drone_status(drone["drone_id"], "Assigned")
 
-    pilot = available_pilot.iloc[0]
-    drone = available_drone.iloc[0]
+        self.refresh()
 
-    return f"""
-Mission Assignment Recommendation:
+        return {
+            "mission": mission_id,
+            "pilot": pilot["name"],
+            "drone": drone["drone_id"]
+        }
 
-Pilot: {pilot['name']}
-Drone: {drone['model']}
-Location: {pilot['location']}
-"""
+    # COMMAND PROCESSOR
+    def process(self, query):
 
+        query = query.lower()
 
-# Command processor
-def process_query(query):
+        if "show pilots" in query:
+            return self.pilots
 
-    query = query.lower()
+        if "show drones" in query:
+            return self.drones
 
-    if "show pilots" in query:
-        return show_pilots()
+        if "show missions" in query:
+            return self.missions
 
-    elif "show drones" in query:
-        return show_drones()
+        if "recommend pilot" in query:
+            return self.recommend_pilot()
 
-    elif "show missions" in query:
-        return show_missions()
+        if "recommend drone" in query:
+            return self.recommend_drone()
 
-    elif "recommend pilot" in query:
-        return recommend_pilot()
+        if "assign mission" in query:
 
-    elif "recommend drone" in query:
-        return recommend_drone()
+            parts = query.split()
 
-    elif "assign mission" in query:
-        return assign_mission()
+            if len(parts) >= 3:
+                mission_id = parts[-1].upper()
+                return self.assign_mission(mission_id)
 
-    elif "mark pilot" in query and "unavailable" in query:
-
-        words = query.split()
-        name = words[2]
-
-        return update_pilot_status(name.capitalize(), "Unavailable")
-
-    elif "mark pilot" in query and "available" in query:
-
-        words = query.split()
-        name = words[2]
-
-        return update_pilot_status(name.capitalize(), "Available")
-
-    else:
-        return "Sorry, I didn't understand."
+        return "Command not recognized"
